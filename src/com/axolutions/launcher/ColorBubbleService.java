@@ -42,6 +42,7 @@ public class ColorBubbleService extends Service {
     private final Runnable ciclo = new Runnable() {
         @Override
         public void run() {
+            religarSeSaiuDoBanco();
             vigiarGestos();
             atualizarBolha();
             handler.postDelayed(this, CICLO_MS);
@@ -103,6 +104,17 @@ public class ColorBubbleService extends Service {
             bolha.esconder();
             bolha = null;
         }
+    }
+
+    /**
+     * Modo banco ligado e o banco ja nao esta na frente: religa os gestos. A vigia do
+     * ModoBanco vivia so na memoria do launcher; se o Android fechava o launcher com o
+     * banco aberto, ninguem religava e o celular ficava so com os botoes.
+     */
+    private void religarSeSaiuDoBanco() {
+        if (!getSharedPreferences("axo", MODE_PRIVATE).getBoolean("gestosOffPorBanco", false)) return;
+        String frente = ModoBanco.appNaFrente(this);
+        if (frente != null && !ModoBanco.ehBanco(frente)) ModoBanco.religar(this);
     }
 
     /**

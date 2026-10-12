@@ -89,7 +89,7 @@ final class ModoBanco {
     }
 
     /** ultimo app que foi pra frente nos ultimos minutos (null = nao deu pra saber) */
-    private static String appNaFrente(Context c) {
+    static String appNaFrente(Context c) {
         try {
             UsageStatsManager usm = c.getSystemService(UsageStatsManager.class);
             long agora = System.currentTimeMillis();
