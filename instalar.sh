@@ -26,6 +26,11 @@ $A shell pm grant $P android.permission.CALL_PHONE
 $A shell pm grant $P android.permission.INTERACT_ACROSS_USERS
 $A shell appops set $P SYSTEM_ALERT_WINDOW allow
 $A shell appops set $P GET_USAGE_STATS allow
+# fora da economia de bateria e com inicio automatico: o HyperOS matava o processo e os gestos caiam
+$A shell dumpsys deviceidle whitelist +$P >/dev/null
+$A shell am set-standby-bucket $P active
+$A shell cmd appops set $P RUN_ANY_IN_BACKGROUND allow
+$A shell cmd appops set $P 10008 allow 2>/dev/null || true   # inicio automatico da Xiaomi
 $A shell cmd role add-role-holder android.app.role.HOME $P >/dev/null
 # servico de gestos: ele mesmo esconde a barra quando liga e devolve os botoes se cair
 SVC=$P/$P.GestureService

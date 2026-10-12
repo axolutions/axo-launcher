@@ -68,13 +68,13 @@ public class GestureService extends AccessibilityService {
 
         setNavBarHidden(true);
 
-        // se o plano B estava rodando, ele sai e a bolinha passa pra ca
-        stopService(new Intent(this, ColorBubbleService.class));
         bolha = new Bolha(this, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
         contador = new Contador(this);
         instancia = this;
         ativo = true;
         atualizarBolha();
+        // o guardiao fica de pe (segura a prioridade do processo); so a bolinha dele sai
+        ColorBubbleService.start(this);
     }
 
     private void addStrip(int w, int h, int x, int y, int gravity, View.OnTouchListener touch) {
@@ -104,6 +104,7 @@ public class GestureService extends AccessibilityService {
 
     private void teardown() {
         ativo = false;
+        ColorBubbleService.atualizar();
         instancia = null;
         if (bolha != null) bolha.esconder();
         if (contador != null) contador.esconder();
