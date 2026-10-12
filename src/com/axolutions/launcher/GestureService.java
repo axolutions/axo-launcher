@@ -146,6 +146,13 @@ public class GestureService extends AccessibilityService {
             }
         } catch (Exception ignored) {
         }
+        // banco na frente: o servico sai do ar (o Nubank bloqueia com ele ligado); a tela inicial religa.
+        // O pacote do evento pega o banco mesmo com um dialogo de outro app (localizacao do Google) por cima.
+        CharSequence doEvento = event != null ? event.getPackageName() : null;
+        if (ModoBanco.ehBanco(app) || (doEvento != null && ModoBanco.ehBanco(doEvento.toString()))) {
+            if (!ModoBanco.desligar(this)) disableSelf();
+            return;
+        }
         // cortina de notificacao, teclado e o proprio Axo por cima nao contam como troca de app
         if (app != null && contador != null && !app.equals(getPackageName())) contador.appEmFrente(app);
         else if (app != null && app.equals(getPackageName()) && contador != null) contador.appEmFrente(null);
@@ -219,15 +226,26 @@ public class GestureService extends AccessibilityService {
         }
     }
 
+    /** evento em coordenadas de tela: a faixa e minuscula, as coordenadas locais saem dela */
+    private static MotionEvent raw(MotionEvent e) {
+        MotionEvent c = MotionEvent.obtain(e);
+        c.setLocation(e.getRawX(), e.getRawY());
+        return c;
+    }
+
     private class HomeTouch implements View.OnTouchListener {
         float downY;
+        /** onde o dedo estava quando o "segurar" comecou a contar; -1 = nao esta contando */
+        float holdY = -1;
         boolean recentsFired;
+        android.view.VelocityTracker vel;
         final Runnable holdForRecents = new Runnable() {
             @Override
             public void run() {
                 recentsFired = true;
                 strips.get(2).performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                performGlobalAction(GLOBAL_ACTION_RECENTS);
+                boolean ok = performGlobalAction(GLOBAL_ACTION_RECENTS);
+                android.util.Log.d("Axo", "gesto: recentes pedido, sistema aceitou=" + ok);
             }
         };
 
@@ -237,16 +255,42 @@ public class GestureService extends AccessibilityService {
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     downY = e.getRawY();
+                    holdY = -1;
                     recentsFired = false;
+                    if (vel != null) vel.recycle();
+                    vel = android.view.VelocityTracker.obtain();
+                    vel.addMovement(raw(e));
                     return true;
                 case MotionEvent.ACTION_MOVE:
-                    // subiu o suficiente e parou: agenda os recentes; mexeu de novo: reagenda
-                    v.removeCallbacks(holdForRecents);
-                    if (!recentsFired && up > dp(90)) v.postDelayed(holdForRecents, 350);
+                    if (vel != null) vel.addMovement(raw(e));
+                    // subiu o suficiente e parou: agenda os recentes. So reagenda se o dedo andar
+                    // de verdade; a tremida natural do dedo zerava a contagem e os recentes nunca abriam
+                    if (recentsFired) return true;
+                    if (up <= dp(90)) {
+                        v.removeCallbacks(holdForRecents);
+                        holdY = -1;
+                    } else if (holdY < 0 || Math.abs(e.getRawY() - holdY) > dp(28)) {
+                        v.removeCallbacks(holdForRecents);
+                        holdY = e.getRawY();
+                        v.postDelayed(holdForRecents, 250);
+                    }
                     return true;
                 case MotionEvent.ACTION_UP:
                     v.removeCallbacks(holdForRecents);
-                    if (!recentsFired && up > dp(40)) performGlobalAction(GLOBAL_ACTION_HOME);
+                    // velocidade na hora de soltar: arrastou rapido = inicio; subiu e freou antes de soltar = recentes
+                    float vy = 0;
+                    if (vel != null) {
+                        vel.addMovement(raw(e));
+                        vel.computeCurrentVelocity(1000);
+                        vy = -vel.getYVelocity();
+                        vel.recycle();
+                        vel = null;
+                    }
+                    android.util.Log.d("Axo", "gesto baixo: subiu " + (int) up + "px, " + (int) vy + "px/s, recentes=" + recentsFired);
+                    if (!recentsFired && up > dp(90) && vy < dp(300)) {
+                        recentsFired = true;
+                        performGlobalAction(GLOBAL_ACTION_RECENTS);
+                    } else if (!recentsFired && up > dp(40)) performGlobalAction(GLOBAL_ACTION_HOME);
                     return true;
                 case MotionEvent.ACTION_CANCEL:
                     v.removeCallbacks(holdForRecents);

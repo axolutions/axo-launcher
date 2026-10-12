@@ -67,12 +67,9 @@ final class Bolha {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.START;
-        int sw = ctx.getResources().getDisplayMetrics().widthPixels;
-        int sh = ctx.getResources().getDisplayMetrics().heightPixels;
-        lp.x = prefs.getInt("bx", sw - size - dp(20));
-        lp.y = prefs.getInt("by", (int) (sh * 0.62));
+        posicionar();
 
-        view = new BolhaView(ctx);
+        view = new BolhaView(ctx, this);
         view.setOnTouchListener(new View.OnTouchListener() {
             final int slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
             float downX, downY;
@@ -95,8 +92,9 @@ final class Bolha {
                         float dx = e.getRawX() - downX, dy = e.getRawY() - downY;
                         if (!dragging && Math.hypot(dx, dy) > slop * 2) dragging = true;
                         if (dragging) {
-                            lp.x = startX + (int) dx;
-                            lp.y = startY + (int) dy;
+                            int[] t = tela();
+                            lp.x = limitar(startX + (int) dx, t[0] - lp.width);
+                            lp.y = limitar(startY + (int) dy, t[1] - lp.height);
                             wm.updateViewLayout(view, lp);
                         }
                         return true;
@@ -104,7 +102,14 @@ final class Bolha {
                     case MotionEvent.ACTION_CANCEL:
                         setGray(ctx, true);
                         view.setPressedState(false);
-                        if (dragging) prefs.edit().putInt("bx", lp.x).putInt("by", lp.y).apply();
+                        if (dragging) {
+                            // guarda em proporcao da tela: arrastada com o celular deitado, ela ficava fora da tela em pe
+                            int[] t = tela();
+                            prefs.edit()
+                                    .putFloat("bxf", lp.x / (float) Math.max(1, t[0] - lp.width))
+                                    .putFloat("byf", lp.y / (float) Math.max(1, t[1] - lp.height))
+                                    .apply();
+                        }
                         return true;
                 }
                 return false;
@@ -123,6 +128,37 @@ final class Bolha {
         setGray(ctx, true);
     }
 
+    /** coloca a bolinha na posicao salva, sempre dentro da tela atual (chamado tambem ao girar) */
+    void posicionar() {
+        if (lp == null) return;
+        int[] t = tela();
+        int livreX = t[0] - lp.width, livreY = t[1] - lp.height;
+        float fx = prefs.getFloat("bxf", (livreX - dp(20)) / (float) Math.max(1, livreX));
+        float fy = prefs.getFloat("byf", 0.62f);
+        lp.x = limitar(Math.round(fx * livreX), livreX);
+        lp.y = limitar(Math.round(fy * livreY), livreY);
+        if (view != null) {
+            try {
+                wm.updateViewLayout(view, lp);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /** largura e altura da tela agora (muda quando o celular gira) */
+    private int[] tela() {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            android.graphics.Rect r = wm.getCurrentWindowMetrics().getBounds();
+            return new int[]{r.width(), r.height()};
+        }
+        android.util.DisplayMetrics m = ctx.getResources().getDisplayMetrics();
+        return new int[]{m.widthPixels, m.heightPixels};
+    }
+
+    private static int limitar(int v, int max) {
+        return Math.max(0, Math.min(v, Math.max(0, max)));
+    }
+
     private int dp(int v) {
         return Math.round(v * ctx.getResources().getDisplayMetrics().density);
     }
@@ -130,12 +166,20 @@ final class Bolha {
     static final class BolhaView extends View {
         private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Bolha dona;
         private boolean pressed;
 
-        BolhaView(Context c) {
+        BolhaView(Context c, Bolha dona) {
             super(c);
+            this.dona = dona;
             ring.setStyle(Paint.Style.STROKE);
             ring.setStrokeWidth(c.getResources().getDisplayMetrics().density * 1.5f);
+        }
+
+        @Override
+        protected void onConfigurationChanged(android.content.res.Configuration c) {
+            super.onConfigurationChanged(c);
+            dona.posicionar();
         }
 
         void setPressedState(boolean p) {

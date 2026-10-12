@@ -67,6 +67,16 @@ final class Config {
             app("netflix", "com.netflix.mediaclient"),
     };
 
+    /**
+     * apps de banco: com eles na frente os gestos, a bolinha e o contador saem do ar
+     * (ver ModoBanco). Pacote que nao estiver instalado nao atrapalha.
+     */
+    static final String[] BANCOS = {
+            "com.nu.production", "com.mercadopago.wallet", "br.com.intermedium",
+            "com.itau", "br.com.bradesco", "br.com.bb.android", "br.com.gabba.Caixa",
+            "com.c6bank.app", "com.santander.app", "com.picpay", "br.com.uol.ps.myaccount",
+    };
+
     /** segundos de espera antes de abrir um app de distracao */
     static final int DISTRACTION_DELAY = 5;
 

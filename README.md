@@ -60,8 +60,14 @@ extratores determinísticos; o modelo nunca inventa número.
 
 **Gestos.** No HyperOS os gestos de navegação só funcionam com o launcher da
 Xiaomi. O axo-launcher traz os próprios: deslizar da borda volta, de baixo para
-cima vai para o início, de baixo para cima e segurar abre os recentes. Se o
-serviço de gestos cair, os botões de navegação voltam sozinhos.
+cima rápido vai para o início, subir e frear antes de soltar abre os recentes.
+Se o serviço de gestos cair, os botões de navegação voltam sozinhos.
+
+**Modo banco.** Alguns bancos (o Nubank, por exemplo) recusam abrir quando há um
+serviço de acessibilidade de fora da Play Store ligado. Com um app de banco na
+frente, o launcher tira os gestos do ar (valem os botões de navegação, sem
+bolinha e sem contador) e religa tudo quando a tela inicial volta. A lista
+fica em `Config.BANCOS`.
 
 ## Instalar
 

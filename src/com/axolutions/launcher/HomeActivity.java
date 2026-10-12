@@ -209,6 +209,7 @@ public class HomeActivity extends Activity {
         updateEvent();
         updateUsage();
         updateWeather(false);
+        ModoBanco.religar(this);
         ColorBubbleService.start(this);
     }
 
@@ -564,6 +565,11 @@ public class HomeActivity extends Activity {
 
     private void launch(Entry e, View from) {
         hideKeyboard();
+        // banco: tira os gestos do ar antes, pro banco ja abrir sem ver o servico de acessibilidade
+        if (e.info != null && ModoBanco.ehBanco(e.info.getComponentName().getPackageName()) && ModoBanco.desligar(this)) {
+            getWindow().getDecorView().postDelayed(() -> launch(e, from), 400);
+            return;
+        }
         try {
             if (e.info != null && e.info.getUser().equals(Process.myUserHandle())) {
                 // a Xiaomi pergunta "qual WhatsApp?" quando um launcher de fora abre um app duplicado;
