@@ -1,0 +1,5 @@
+build/
+secrets.properties
+# estado do aparelho de quem instalou (gerados pelos scripts)
+estado-original.txt
+desinstalados.txt
